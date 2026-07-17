@@ -215,6 +215,23 @@ func TestLayoutBugfix(t *testing.T) {
 
 			assert.Equal(t, 46, <-c)
 		})
+
+		t.Run("layer index overflow in cross counting", func(t *testing.T) {
+			id := func(prefix string, i int) string { return fmt.Sprintf("%s%d", prefix, i) }
+			var edges [][]string
+			for i := range 70 {
+				// long spine to get past 64 layers, with a leaf at each layer so
+				// that every bilayer pair qualifies for cross counting
+				edges = append(edges, []string{id("s", i), id("s", i+1)})
+				edges = append(edges, []string{id("s", i), id("t", i)})
+			}
+			for i := range 5 {
+				// widen one deep layer so that stray edge endpoints fall outside
+				// the radix sort matrix of thinner colliding layer pairs
+				edges = append(edges, []string{id("s", 65), id("c", i)})
+			}
+			assert.NotPanics(t, func() { _ = Layout(graph.EdgeSlice(edges)) })
+		})
 	})
 
 	t.Run("network simplex positioner no panic", func(t *testing.T) {
