@@ -265,6 +265,34 @@ func TestLayoutBugfix(t *testing.T) {
 		}
 	})
 
+	t.Run("sink coloring no overlaps", func(t *testing.T) {
+		g := &ig.DGraph{}
+		graph.EdgeSlice([][]string{
+			{"S0", "T0"}, {"T0", "S5"}, {"S5", "T12"},
+			{"S0", "T1"}, {"T1", "S4"}, {"S4", "T11"},
+			{"S0", "T2"}, {"T2", "S2"},
+			{"S2", "T6"},
+			{"S2", "T7"},
+			{"S2", "T8"}, {"T8", "S6"},
+			{"S6", "T13"},
+			{"S6", "T14"},
+			{"S2", "T9"}, {"T9", "S7"}, {"S7", "T15"},
+		}).Populate(g)
+		_ = Layout(g,
+			WithPositioning(PositioningSinkColoring),
+			WithEdgeRouting(EdgeRoutingNoop),
+			WithNodeFixedSize(400, 300),
+		)
+
+		for _, l := range g.Layers {
+			for j := 1; j < l.Len(); j++ {
+				prv, cur := l.Nodes[j-1], l.Nodes[j]
+				// note: this isn't a strict inequality because virtual nodes have size 0x0
+				assert.Truef(t, prv.X+prv.W <= cur.X, "%s(X+W:%.2f) overlaps %s(X:%.2f)", prv, prv.X+prv.W, cur, cur.X)
+			}
+		}
+	})
+
 	t.Run("sink coloring program hangs", func(t *testing.T) {
 		src := graph.EdgeSlice([][]string{
 			{"N1", "N2"},
